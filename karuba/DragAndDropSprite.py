@@ -27,5 +27,5 @@ class DragAndDropSprite(ActiveSprite):
         if not self.draggable:
             return
         if self.drag:
-            top_left = mouse_pos - self.mouse_offset
+            top_left = mouse_pos + self.mouse_offset
             self.rect = self.rect._replace(x=top_left.x, y=top_left.y)

@@ -6,6 +6,8 @@ from .Color import Color
 from .Phase import Phase
 from .GameState import GameState
 from .ActiveSprite import ActiveSprite
+from .AdventurerSprite import AdventurerSprite
+from .TempleSprite import TempleSprite
 from .TileSprite import TileSprite
 from .TileEffect import TileValidEffect
 from .Settings import MIN_DISTANCE_ADVENTURER_TEMPLE, BOARD_WIDTH, BOARD_HEIGHT
@@ -83,11 +85,16 @@ class GameEngine:
                 return True
         return False
 
-    def set_temple_latitude(self, temple: Color, latitude: Latitude) -> None:
-        self.state.temples[latitude] = temple
+    def set_temple_latitude(self, color: Color, latitude: Latitude) -> None:
+        self.state.temples[latitude] = color
+        # Add a sprite
+        self.objects.append(TempleSprite(color=color, latitude=latitude))
 
-    def set_adventurer_latitude(self, adventurer: Color, latitude: Latitude) -> None:
-        self.state.adventurers_start[latitude] = adventurer
+    def set_adventurer_latitude(self, color: Color, latitude: Latitude) -> None:
+        self.state.adventurers_start[latitude] = color
+        # Add a sprite
+        pos = Coordinates.adventurer_latitude_to_grid_position(latitude)
+        self.objects.append(AdventurerSprite(color=color, grid_position=pos))
 
     def add_tile(self, tile_id: TileID, grid_position: GridPosition):
         self.state.player.board.add_tile(tile_id, grid_position)
@@ -102,19 +109,17 @@ class GameEngine:
 
     def process_events(self):
         # Delegate mouse events to each object
+        mouse_pos = Position(*pygame.mouse.get_pos())
         for event in pygame.event.get():
             if event.type == pygame.MOUSEBUTTONDOWN:
-                mouse_pos = Position(*pygame.mouse.get_pos())
                 for obj in self.objects:
                     obj.on_mouse_down(mouse_pos)
 
             if event.type == pygame.MOUSEBUTTONUP:
-                mouse_pos = Position(*pygame.mouse.get_pos())
                 for obj in self.objects:
                     obj.on_mouse_up(mouse_pos)
 
             if event.type == pygame.MOUSEMOTION:
-                mouse_pos = Position(*pygame.mouse.get_pos())
                 for obj in self.objects:
                     obj.on_mouse_move(mouse_pos)
 

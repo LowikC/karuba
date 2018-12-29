@@ -16,6 +16,7 @@ class TileValidEffect(ActiveSprite):
         super().__init__(None, rect)
 
     def on_mouse_move(self, mouse_pos: Position):
+        self.image = None
         if GameEngine.engine.phase == Phase.MOVE_NEXT_TILE:
             if self.rect.collidepoint(x=mouse_pos.x, y=mouse_pos.y):
                 grid_position = Renderer.screen_to_grid(mouse_pos)
@@ -23,5 +24,3 @@ class TileValidEffect(ActiveSprite):
                     self.image = self.image_valid
                 else:
                     self.image = self.image_invalid
-        else:
-            self.image = None

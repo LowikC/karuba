@@ -49,6 +49,9 @@ class TileSprite(DragAndDropSprite):
             # Case 1: in drop zone
             if Renderer.drop_rect.collidepoint(x=mouse_pos.x, y=mouse_pos.y):
                 GameEngine.engine.drop_tile(self.tile_id)
+                self.rect = center_rect(Renderer.drop_rect, self.image)
+                self.drag = False
+                self.draggable = False
                 return
             # Case 2: in tile area
             grid_position = Renderer.screen_to_grid(mouse_pos)
