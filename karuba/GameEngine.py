@@ -42,6 +42,9 @@ class GameEngine:
         # Add static objects
         self.objects.append(Renderer.background_sprite)
         self.objects.append(Renderer.board_sprite)
+        self.objects.append(Renderer.score_sprite)
+        self.objects.append(Renderer.drop_sprite)
+
         # Add tile effects (default is neutral)
         for x in range(1, BOARD_WIDTH - 1):
             for y in range(1, BOARD_HEIGHT - 1):

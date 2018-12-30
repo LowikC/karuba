@@ -33,6 +33,16 @@ background_sprite = ActiveSprite(image=load_asset("background"), rect=background
 #: The sprite for the board
 board_sprite = ActiveSprite(image=load_asset("board"), rect=board_rect)
 
+#: The sprite for the drop area
+drop_sprite = ActiveSprite(
+    image=load_asset("drop_tile", keycolor=None, use_alpha=True), rect=drop_rect
+)
+
+#: The sprite for the score area
+score_sprite = ActiveSprite(
+    image=load_asset("score", keycolor=None, use_alpha=True), rect=score_rect
+)
+
 #: Position on the board image
 top_left_tiles = Position(x=220, y=52)
 bottom_left_tiles = Position(x=220, y=676)
@@ -122,9 +132,6 @@ def screen_to_grid(screen_position: ScreenPosition) -> Optional[GridPosition]:
     return Position(x=x, y=y)
 
 
-# updated_rect = set()
-
-
 def render() -> None:
     """
     Render the current state of the engine.
@@ -133,4 +140,3 @@ def render() -> None:
     for obj in GameEngine.engine.objects:
         obj.draw(screen)
     pygame.display.flip()
-    # updated_rect.clear()
