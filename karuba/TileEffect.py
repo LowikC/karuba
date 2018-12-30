@@ -10,8 +10,12 @@ from . import Renderer
 class TileValidEffect(ActiveSprite):
     def __init__(self, grid_position: GridPosition):
         rect = Renderer.grid_to_screen(grid_position)
-        self.image_valid: pygame.Surface = load_asset("tile_valid")
-        self.image_invalid: pygame.Surface = load_asset("tile_invalid")
+        self.image_valid: pygame.Surface = load_asset(
+            "tile_valid", keycolor=None, use_alpha=True
+        )
+        self.image_invalid: pygame.Surface = load_asset(
+            "tile_invalid", keycolor=None, use_alpha=True
+        )
         self.grid_position: GridPosition = grid_position
         super().__init__(None, rect)
 
