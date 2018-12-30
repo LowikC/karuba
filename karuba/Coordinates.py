@@ -35,7 +35,7 @@ def manhattan_distance(a: Position, b: Position) -> int:
     return abs(a.x - b.x) + abs(a.y - b.y)
 
 
-def center_rect(cell_rect: Rect, target: pygame.Surface):
+def center_rect(cell_rect: Rect, target: pygame.Surface) -> Rect:
     target_rect = target.get_rect()
     dx = (cell_rect.width - target_rect.width) // 2
     dy = (cell_rect.height - target_rect.height) // 2

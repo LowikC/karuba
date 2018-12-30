@@ -4,6 +4,7 @@ from .Coordinates import center_rect
 from .SpriteManager import load_asset
 from .Renderer import grid_to_screen
 from .Phase import Phase
+from .Settings import BOARD_HEIGHT
 from . import GameEngine
 
 
@@ -15,9 +16,15 @@ class AdventurerSprite(ActiveSprite):
     """
 
     def __init__(self, color, grid_position):
-        image = load_asset(f"adventurer_{color.name}")
+        image = load_asset(f"adventurer_{color.name}", keycolor=None, use_alpha=True)
         cell_rect = grid_to_screen(grid_position)
         rect = center_rect(cell_rect, image)
+        # Change the position for the bottom row
+        if grid_position.y == BOARD_HEIGHT - 1:
+            bottom = cell_rect.y + cell_rect.height
+            bottom -= 5
+            top = bottom - rect.height
+            rect = rect._replace(y=top)
         self.color = color
         self.selected = False
         super().__init__(image, rect)
