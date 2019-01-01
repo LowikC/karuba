@@ -1,7 +1,8 @@
 import random
 import pygame
-from typing import List
-from .core import Latitude, TileID, GridPosition, Position
+from collections import OrderedDict
+from typing import List, Dict
+from .core import Latitude, TileID, GridPosition, Position, Rect
 from .Color import Color
 from .Phase import Phase
 from .GameState import GameState
@@ -32,23 +33,43 @@ class GameEngine:
         #: Full game state
         self.state: GameState = GameState()
         #: Renderable and active objects
-        self.objects: List[ActiveSprite] = []
+        self.layers: Dict[str, List[ActiveSprite]] = OrderedDict()
         #: Current phase
         self.phase: Phase = Phase.START
 
         self.initialize()
 
+    @property
+    def objects(self):
+        all_objects = []
+        for layer, objs in self.layers.items():
+            all_objects.extend(objs)
+        return all_objects
+
     def initialize(self) -> None:
+        self.layers = OrderedDict(
+            static=[],
+            tiles=[],
+            tiles_effects=[],
+            temples=[],
+            adventurers=[],
+            drop_tile=[],
+            next_tile=[],
+        )
         # Add static objects
-        self.objects.append(Renderer.background_sprite)
-        self.objects.append(Renderer.board_sprite)
-        self.objects.append(Renderer.score_sprite)
-        self.objects.append(Renderer.drop_sprite)
+        self.layers["static"] = [
+            Renderer.background_sprite,
+            Renderer.board_sprite,
+            Renderer.score_sprite,
+            Renderer.drop_sprite,
+        ]
 
         # Add tile effects (default is neutral)
         for x in range(1, BOARD_WIDTH - 1):
             for y in range(1, BOARD_HEIGHT - 1):
-                self.objects.append(TileValidEffect(grid_position=Position(x=x, y=y)))
+                self.layers["tiles_effects"].append(
+                    TileValidEffect(grid_position=Position(x=x, y=y))
+                )
         # Should add score + drop zone + marker for next tile
         self.choose_random_start()
         self.choose_next_tile()
@@ -76,7 +97,7 @@ class GameEngine:
         self.state.next_tile_id = tile_id
         self.state.remaining_tiles_ids.remove(tile_id)
         tile_sprite = TileSprite(tile_id, Renderer.next_tile_rect, draggable=True)
-        self.objects.append(tile_sprite)
+        self.layers["next_tile"] = [tile_sprite]
         self.phase = Phase.MOVE_NEXT_TILE
 
     def valid_tile_move(self, grid_position):
@@ -91,19 +112,27 @@ class GameEngine:
     def set_temple_latitude(self, color: Color, latitude: Latitude) -> None:
         self.state.temples[latitude] = color
         # Add a sprite
-        self.objects.append(TempleSprite(color=color, latitude=latitude))
+        self.layers["temples"].append(TempleSprite(color=color, latitude=latitude))
 
     def set_adventurer_latitude(self, color: Color, latitude: Latitude) -> None:
         self.state.adventurers_start[latitude] = color
         # Add a sprite
         pos = Coordinates.adventurer_latitude_to_grid_position(latitude)
-        self.objects.append(AdventurerSprite(color=color, grid_position=pos))
+        self.layers["adventurers"].append(
+            AdventurerSprite(color=color, grid_position=pos)
+        )
 
-    def add_tile(self, tile_id: TileID, grid_position: GridPosition):
-        self.state.player.board.add_tile(tile_id, grid_position)
+    def remove_next_tile(self):
+        self.layers["next_tile"] = []
+
+    def add_tile(self, tile: TileSprite):
+        self.state.player.board.add_tile(tile.tile_id, tile.grid_position)
         self.phase = Phase.SAMPLE_NEXT_TILE
+        self.layers["tiles"].append(tile)
 
-    def drop_tile(self, tile_id: TileID):
+    def drop_tile(self, tile: TileSprite):
+        self.layers["drop_tile"] = [tile]
+        self.remove_next_tile()
         self.phase = Phase.SAMPLE_NEXT_TILE
         pass
 

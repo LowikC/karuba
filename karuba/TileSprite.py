@@ -18,7 +18,7 @@ class TileSprite(DragAndDropSprite):
         :param rect: Inital position of the tile
         :param draggable: Can be dragged and dropped
         """
-        self.tile_id: Tile = tiles[tile_id]
+        self.tile_id: TileID = tile_id
         self.grid_position = None
         image = load_asset(f"tile_{tile_id:02d}")
         super().__init__(image, rect)
@@ -48,10 +48,10 @@ class TileSprite(DragAndDropSprite):
         if GameEngine.engine.phase == Phase.MOVE_NEXT_TILE and self.drag:
             # Case 1: in drop zone
             if Renderer.drop_rect.collidepoint(x=mouse_pos.x, y=mouse_pos.y):
-                GameEngine.engine.drop_tile(self.tile_id)
                 self.rect = center_rect(Renderer.drop_rect, self.image)
                 self.drag = False
                 self.draggable = False
+                GameEngine.engine.drop_tile(self)
                 return
             # Case 2: in tile area
             grid_position = Renderer.screen_to_grid(mouse_pos)
@@ -62,10 +62,11 @@ class TileSprite(DragAndDropSprite):
                 # Get the exact position for the tile (center of the cell)
                 cell_rect = Renderer.grid_to_screen(self.grid_position)
                 self.rect = center_rect(cell_rect, self.image)
-                # Add the tile to game state
-                GameEngine.engine.add_tile(self.tile_id, grid_position)
                 self.drag = False
                 self.draggable = False
+                # Add the tile to game state
+                GameEngine.engine.add_tile(self)
+                GameEngine.engine.remove_next_tile()
                 return
             # Case 3: released elsewhere, reset position
             self.rect = Renderer.next_tile_rect
