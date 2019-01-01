@@ -24,12 +24,12 @@ class AdventurerSprite(ActiveSprite):
         self.image_selected = load_asset(
             f"adventurer_{color.name}_selected", keycolor=None, use_alpha=True
         )
-        self.set_grid_position(grid_position)
+        self.move(grid_position)
         self.color = color
         self.selected = False
         super().__init__(self.image, self.rect)
 
-    def set_grid_position(self, grid_position: GridPosition):
+    def move(self, grid_position: GridPosition):
         cell_rect = grid_to_screen(grid_position)
         rect = center_rect(cell_rect, self.image)
         if grid_position.y == BOARD_HEIGHT - 1:

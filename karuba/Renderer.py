@@ -1,7 +1,9 @@
 import pygame
+import logging
 from typing import Optional
 from .core import Position, GridPosition, ScreenPosition, Rect
 from .ActiveSprite import ActiveSprite
+from .Drawable import Drawable
 from .SpriteManager import load_asset
 from .Settings import BOARD_WIDTH, BOARD_HEIGHT
 from . import GameEngine
@@ -28,18 +30,18 @@ next_tile_rect = Rect(x=1183, y=292, width=117, height=117)
 drop_rect = Rect(x=board_rect.x + board_rect.width + 30, y=520, width=280, height=280)
 
 #: The sprite for the background
-background_sprite = ActiveSprite(image=load_asset("background"), rect=background_rect)
+background_sprite = Drawable(image=load_asset("background"), rect=background_rect)
 
 #: The sprite for the board
-board_sprite = ActiveSprite(image=load_asset("board"), rect=board_rect)
+board_sprite = Drawable(image=load_asset("board"), rect=board_rect)
 
 #: The sprite for the drop area
-drop_sprite = ActiveSprite(
+drop_sprite = Drawable(
     image=load_asset("drop_tile", keycolor=None, use_alpha=True), rect=drop_rect
 )
 
 #: The sprite for the score area
-score_sprite = ActiveSprite(
+score_sprite = Drawable(
     image=load_asset("score", keycolor=None, use_alpha=True), rect=score_rect
 )
 
@@ -137,6 +139,6 @@ def render() -> None:
     Render the current state of the engine.
     To simplify, we redraw the full screen each time
     """
-    for obj in GameEngine.engine.objects:
+    for obj in GameEngine.engine.renderables:
         obj.draw(screen)
     pygame.display.flip()

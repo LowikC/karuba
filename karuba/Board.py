@@ -8,9 +8,6 @@ from .Graph import Graph, shortest_path, connect
 
 
 def grid_to_index(grid_position: GridPosition) -> int:
-    """
-    Convert grid position to array index
-    """
     return grid_position.x + grid_position.y * BOARD_WIDTH
 
 
@@ -28,10 +25,8 @@ def is_border(index: int):
     )
 
 
-dx = {Direction.LEFT: -1, Direction.BOTTOM: 0, Direction.RIGHT: 1, Direction.TOP: 0}
-
-
-dy = {Direction.LEFT: 0, Direction.BOTTOM: 1, Direction.RIGHT: 0, Direction.TOP: -1}
+_DX = {Direction.LEFT: -1, Direction.BOTTOM: 0, Direction.RIGHT: 1, Direction.TOP: 0}
+_DY = {Direction.LEFT: 0, Direction.BOTTOM: 1, Direction.RIGHT: 0, Direction.TOP: -1}
 
 
 class Board:
@@ -46,8 +41,6 @@ class Board:
         ]
         #: Current grid position of every adventurer (indexed by color)
         self.adventurers: Dict[Color, GridPosition] = {}
-        #: Previous grid positions of every adventurer
-        self.adventurers_tracks: Dict[Color, List[GridPosition]] = {}
         #: Graph representing board
         self.graph: Graph = {i: set() for i in range(BOARD_HEIGHT * BOARD_WIDTH)}
 
@@ -60,36 +53,17 @@ class Board:
     def add_tile(self, tile_id: TileID, grid_position: GridPosition):
         index = grid_to_index(grid_position)
         assert 0 <= index < len(self.tiles_ids)
+        assert self.tiles_ids[index] is None
         self.tiles_ids[index] = tile_id
-
-        # Update the graph
-        tile = tiles[tile_id]
-        logging.debug(f"Add tile at index: {index}")
-        for d in Direction:
-            if tile.ways[d.value]:
-                next_index = grid_to_index(
-                    Position(grid_position.x + dx[d], grid_position.y + dy[d])
-                )
-                if is_border(next_index):
-                    connect(self.graph, next_index, index)
-                    logging.debug(f"Connect with index: {next_index} (border)")
-                elif self.tiles_ids[next_index] is not None:
-                    next_tile = tiles[self.tiles_ids[next_index]]
-                    if next_tile.ways[d.opposite().value]:
-                        connect(self.graph, next_index, index)
-                        logging.debug(f"Connect with index: {next_index}")
-        logging.debug(f"Updated graph: {self.graph}")
+        self._update_graph(tile_id, grid_position)
 
     def add_adventurer(self, color: Color, position: GridPosition):
         self.adventurers[color] = position
-        self.adventurers_tracks[color] = [position]
 
     def move_adventurer(self, color: Color, new_position: GridPosition):
         path = self.get_path(self.adventurers[color], new_position)
         assert path
         assert new_position != self.adventurers[color]
-        # path[0] contains the current position
-        self.adventurers_tracks[color].extend(path[1:])
         self.adventurers[color] = new_position
 
     def valid_adventurer_move(self, color: Color, n_cells: int) -> bool:
@@ -124,3 +98,22 @@ class Board:
             return False
         num_moves_required = len(self.get_path(start, end)) - 1
         return num_moves_required <= num_moves
+
+    def _update_graph(self, tile_id: TileID, grid_position: GridPosition):
+        index = grid_to_index(grid_position)
+        tile = tiles[tile_id]
+        for direction in Direction:
+            if not tile.ways[direction.value]:
+                continue
+            next_index = grid_to_index(
+                Position(
+                    x=grid_position.x + _DX[direction],
+                    y=grid_position.y + _DY[direction],
+                )
+            )
+            if is_border(next_index):
+                connect(self.graph, next_index, index)
+            elif self.tiles_ids[next_index] is not None:
+                next_tile = tiles[self.tiles_ids[next_index]]
+                if next_tile.ways[direction.opposite().value]:
+                    connect(self.graph, next_index, index)

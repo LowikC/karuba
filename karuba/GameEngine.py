@@ -1,3 +1,4 @@
+import attr
 import random
 import pygame
 from collections import OrderedDict
@@ -6,6 +7,7 @@ from .core import Latitude, TileID, GridPosition, Position, Rect
 from .Color import Color
 from .Phase import Phase
 from .GameState import GameState
+from .Drawable import Drawable
 from .ActiveSprite import ActiveSprite
 from .AdventurerSprite import AdventurerSprite
 from .TempleSprite import TempleSprite
@@ -27,6 +29,30 @@ def valid_start(adv_latitude: Latitude, temple_latitude: Latitude) -> bool:
     return distance >= MIN_DISTANCE_ADVENTURER_TEMPLE + 1
 
 
+class Layers:
+    def __init__(self):
+        self.static: List[ActiveSprite] = []
+        self.tiles: List[TileSprite] = []
+        self.tiles_effects: List[TileValidEffect] = []
+        self.temples: List[TempleSprite] = []
+        self.adventurers: List[AdventurerSprite] = []
+        self.drop_tile: Optional[TileSprite] = None
+        self.next_tile: Optional[TileSprite] = None
+
+    @property
+    def renderables(self) -> List[Drawable]:
+        return self.static + self.dynamics
+
+    @property
+    def dynamics(self) -> List[ActiveSprite]:
+        all_dynamics = self.tiles + self.tiles_effects + self.temples + self.adventurers
+        if self.drop_tile is not None:
+            all_dynamics.append(self.drop_tile)
+        if self.next_tile is not None:
+            all_dynamics.append(self.next_tile)
+        return all_dynamics
+
+
 class GameEngine:
     def __init__(self):
         #: To know when to quit
@@ -34,7 +60,7 @@ class GameEngine:
         #: Full game state
         self.state: GameState = GameState()
         #: Layers of renderable and active sprites
-        self.layers: Dict[str, List[ActiveSprite]] = OrderedDict()
+        self.layers: Layers = Layers()
         #: Current phase
         self.phase: Phase = Phase.START
 
@@ -43,24 +69,16 @@ class GameEngine:
         self.initialize()
 
     @property
-    def objects(self):
-        all_objects = []
-        for layer, objs in self.layers.items():
-            all_objects.extend(objs)
-        return all_objects
+    def renderables(self) -> List[Drawable]:
+        return self.layers.renderables
+
+    @property
+    def dynamics(self) -> List[ActiveSprite]:
+        return self.layers.dynamics
 
     def initialize(self) -> None:
-        self.layers = OrderedDict(
-            static=[],
-            tiles=[],
-            tiles_effects=[],
-            temples=[],
-            adventurers=[],
-            drop_tile=[],
-            next_tile=[],
-        )
         # Add static objects
-        self.layers["static"] = [
+        self.layers.static = [
             Renderer.background_sprite,
             Renderer.board_sprite,
             Renderer.score_sprite,
@@ -94,7 +112,7 @@ class GameEngine:
         self.state.next_tile_id = tile_id
         self.state.remaining_tiles_ids.remove(tile_id)
         tile_sprite = TileSprite(tile_id, Renderer.next_tile_rect, draggable=True)
-        self.layers["next_tile"] = [tile_sprite]
+        self.layers.next_tile = tile_sprite
         self.phase = Phase.MOVE_NEXT_TILE
 
     def valid_tile_move(self, grid_position):
@@ -109,37 +127,35 @@ class GameEngine:
     def set_temple_latitude(self, color: Color, latitude: Latitude) -> None:
         self.state.temples[latitude] = color
         # Add a sprite
-        self.layers["temples"].append(TempleSprite(color=color, latitude=latitude))
+        self.layers.temples.append(TempleSprite(color=color, latitude=latitude))
 
     def set_adventurer_latitude(self, color: Color, latitude: Latitude) -> None:
         self.state.adventurers_start[latitude] = color
         # Add a sprite
         pos = Coordinates.adventurer_latitude_to_grid_position(latitude)
-        self.layers["adventurers"].append(
-            AdventurerSprite(color=color, grid_position=pos)
-        )
+        self.layers.adventurers.append(AdventurerSprite(color=color, grid_position=pos))
 
     def remove_next_tile(self):
-        self.layers["next_tile"] = []
+        self.layers.next_tile = None
 
     def add_tile(self, tile: TileSprite):
         self.state.player.board.add_tile(tile.tile_id, tile.grid_position)
         self.phase = Phase.SAMPLE_NEXT_TILE
-        self.layers["tiles"].append(tile)
-        self.layers["tiles_effects"].append(
+        self.layers.tiles.append(tile)
+        self.layers.tiles_effects.append(
             TileValidEffect(grid_position=tile.grid_position)
         )
 
     def drop_tile(self, tile: TileSprite):
-        self.layers["drop_tile"] = [tile]
+        self.layers.drop_tile = tile
         self.remove_next_tile()
         self.phase = Phase.MOVE_ADVENTURER
         pass
 
     def reset_selected_adventurer(self):
-        for adventurer in self.layers["adventurers"]:
+        for adventurer in self.layers.adventurers:
             adventurer.selected = False
-        for tile_effect in self.layers["tiles_effects"]:
+        for tile_effect in self.layers.tiles_effects:
             tile_effect.set_mode(TileEffectMode.NEUTRAL)
         self.selected_adventurer = None
 
@@ -148,39 +164,51 @@ class GameEngine:
         self.update_tile_effects()
 
     def update_tile_effects(self):
-        for tile_effect in self.layers["tiles_effects"]:
+        for tile_effect in self.layers.tiles_effects:
             if self.reachable(tile_effect.grid_position):
                 tile_effect.set_mode(TileEffectMode.VALID)
             else:
                 tile_effect.set_mode(TileEffectMode.INVALID)
 
     def reachable(self, grid_position: GridPosition):
-        dropped_tile_id = self.layers["drop_tile"][0].tile_id
+        dropped_tile_id = self.layers.drop_tile.tile_id
         num_moves = tiles[dropped_tile_id].num_ways()
         adv_position = self.state.player.board.adventurers[self.selected_adventurer]
+        if grid_position in self.state.player.board.adventurers.values():
+            return False
         return self.state.player.board.connected(adv_position, grid_position, num_moves)
 
     def set_adventurer_destination(self, grid_position):
-        pass
+        if self.selected_adventurer is None:
+            return
+        if not self.reachable(grid_position):
+            return
+        color = self.selected_adventurer
+        self.state.player.board.move_adventurer(color, grid_position)
+        for adv in self.layers.adventurers:
+            if adv.color == color:
+                adv.move(grid_position)
+        self.reset_selected_adventurer()
+        self.phase = Phase.SAMPLE_NEXT_TILE
 
     def process_events(self):
         # Delegate mouse events to each object
         mouse_pos = Position(*pygame.mouse.get_pos())
         for event in pygame.event.get():
             if event.type == pygame.MOUSEBUTTONDOWN:
-                for obj in self.objects:
+                for obj in self.dynamics:
                     obj.on_mouse_down(mouse_pos)
 
             if event.type == pygame.MOUSEBUTTONUP:
-                for obj in self.objects:
+                for obj in self.dynamics:
                     obj.on_mouse_up(mouse_pos)
 
             if event.type == pygame.MOUSEMOTION:
-                for obj in self.objects:
+                for obj in self.dynamics:
                     obj.on_mouse_move(mouse_pos)
 
             if event.type == pygame.QUIT:
-                for obj in self.objects:
+                for obj in self.dynamics:
                     obj.on_quit()
                 self.running = False
 
