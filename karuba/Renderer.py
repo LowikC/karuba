@@ -27,7 +27,15 @@ score_rect = Rect(
 next_tile_rect = Rect(x=1183, y=292, width=117, height=117)
 
 #: Position where to drop the tile to choose to move an adventurer instead
-drop_rect = Rect(x=board_rect.x + board_rect.width + 30, y=520, width=280, height=280)
+drop_area_rect = Rect(
+    x=board_rect.x + board_rect.width + 30, y=520, width=280, height=280
+)
+dropped_tile_rect = Rect(
+    x=board_rect.x + board_rect.width + 30 + (drop_area_rect.width - 117) // 2,
+    y=drop_area_rect.y + (drop_area_rect.height - 117) // 2,
+    width=117,
+    height=117,
+)
 
 #: The sprite for the background
 background_sprite = Drawable(image=load_asset("background"), rect=background_rect)
@@ -37,7 +45,7 @@ board_sprite = Drawable(image=load_asset("board"), rect=board_rect)
 
 #: The sprite for the drop area
 drop_sprite = Drawable(
-    image=load_asset("drop_tile", keycolor=None, use_alpha=True), rect=drop_rect
+    image=load_asset("drop_tile", keycolor=None, use_alpha=True), rect=drop_area_rect
 )
 
 #: The sprite for the score area
@@ -139,6 +147,6 @@ def render() -> None:
     Render the current state of the engine.
     To simplify, we redraw the full screen each time
     """
-    for obj in GameEngine.engine.renderables:
+    for obj in GameEngine.engine.drawables:
         obj.draw(screen)
     pygame.display.flip()
