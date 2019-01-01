@@ -4,6 +4,16 @@ from typing import NamedTuple, Optional
 from enum import Enum
 
 
+class Direction(Enum):
+    LEFT = 0
+    BOTTOM = 1
+    RIGHT = 2
+    TOP = 3
+
+    def opposite(self):
+        return Direction((self.value + 2) % 4)
+
+
 class Ways(NamedTuple):
     left: bool = False
     bottom: bool = False
@@ -35,6 +45,9 @@ class Tile:
     cristal: Optional[Quadrant] = None
     #: Has a gold or not
     gold: Optional[Quadrant] = None
+
+    def num_ways(self) -> int:
+        return self.ways.num_ways()
 
 
 tiles = {

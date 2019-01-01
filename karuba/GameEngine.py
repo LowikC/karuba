@@ -1,7 +1,7 @@
 import random
 import pygame
 from collections import OrderedDict
-from typing import List, Dict
+from typing import List, Dict, Optional
 from .core import Latitude, TileID, GridPosition, Position, Rect
 from .Color import Color
 from .Phase import Phase
@@ -10,7 +10,8 @@ from .ActiveSprite import ActiveSprite
 from .AdventurerSprite import AdventurerSprite
 from .TempleSprite import TempleSprite
 from .TileSprite import TileSprite
-from .TileEffect import TileValidEffect
+from .TileEffect import TileValidEffect, TileEffectMode
+from .Tile import tiles
 from .Settings import MIN_DISTANCE_ADVENTURER_TEMPLE, BOARD_WIDTH, BOARD_HEIGHT
 from . import Coordinates
 from . import Renderer
@@ -32,10 +33,12 @@ class GameEngine:
         self.running: bool = True
         #: Full game state
         self.state: GameState = GameState()
-        #: Renderable and active objects
+        #: Layers of renderable and active sprites
         self.layers: Dict[str, List[ActiveSprite]] = OrderedDict()
         #: Current phase
         self.phase: Phase = Phase.START
+
+        self.selected_adventurer: Optional[Color] = None
 
         self.initialize()
 
@@ -64,12 +67,6 @@ class GameEngine:
             Renderer.drop_sprite,
         ]
 
-        # Add tile effects (default is neutral)
-        for x in range(1, BOARD_WIDTH - 1):
-            for y in range(1, BOARD_HEIGHT - 1):
-                self.layers["tiles_effects"].append(
-                    TileValidEffect(grid_position=Position(x=x, y=y))
-                )
         # Should add score + drop zone + marker for next tile
         self.choose_random_start()
         self.choose_next_tile()
@@ -129,12 +126,39 @@ class GameEngine:
         self.state.player.board.add_tile(tile.tile_id, tile.grid_position)
         self.phase = Phase.SAMPLE_NEXT_TILE
         self.layers["tiles"].append(tile)
+        self.layers["tiles_effects"].append(
+            TileValidEffect(grid_position=tile.grid_position)
+        )
 
     def drop_tile(self, tile: TileSprite):
         self.layers["drop_tile"] = [tile]
         self.remove_next_tile()
-        self.phase = Phase.SAMPLE_NEXT_TILE
+        self.phase = Phase.MOVE_ADVENTURER
         pass
+
+    def reset_selected_adventurer(self):
+        for adventurer in self.layers["adventurers"]:
+            adventurer.selected = False
+        for tile_effect in self.layers["tiles_effects"]:
+            tile_effect.set_mode(TileEffectMode.NEUTRAL)
+        self.selected_adventurer = None
+
+    def set_selected_adventurer(self, color: Color):
+        self.selected_adventurer = color
+        self.update_tile_effects()
+
+    def update_tile_effects(self):
+        for tile_effect in self.layers["tiles_effects"]:
+            if self.reachable(tile_effect.grid_position):
+                tile_effect.set_mode(TileEffectMode.VALID)
+            else:
+                tile_effect.set_mode(TileEffectMode.INVALID)
+
+    def reachable(self, grid_position: GridPosition):
+        dropped_tile_id = self.layers["drop_tile"][0].tile_id
+        num_moves = tiles[dropped_tile_id].num_ways()
+        adv_position = self.state.player.board.adventurers[self.selected_adventurer]
+        return self.state.player.board.connected(adv_position, grid_position, num_moves)
 
     def set_adventurer_destination(self, grid_position):
         pass

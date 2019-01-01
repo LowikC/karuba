@@ -32,7 +32,7 @@ class TileSprite(DragAndDropSprite):
             return
         # When in SELECT_ADVENTURER_DESTINATION
         # Check if click on this tile, then set the adventurer destination.
-        if GameEngine.engine.phase == Phase.SELECT_ADVENTURER_DESTINATION:
+        if GameEngine.engine.phase == Phase.MOVE_ADVENTURER:
             if self.rect.collidepoint(x=mouse_pos.x, y=mouse_pos.y):
                 GameEngine.engine.set_adventurer_destination(self.grid_position)
 
