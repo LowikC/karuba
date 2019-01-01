@@ -34,9 +34,7 @@ class MovableTileSprite(DragAndDropSprite):
                 return
             # Case 2: in tile area
             grid_position = Renderer.screen_to_grid(mouse_pos)
-            if grid_position is not None and GameEngine.engine.valid_tile_move(
-                grid_position
-            ):
+            if grid_position is not None:
                 GameEngine.engine.add_tile(self.tile_id, grid_position)
                 return
             # Case 3: released elsewhere, reset position

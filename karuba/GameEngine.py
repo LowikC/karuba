@@ -109,9 +109,6 @@ class GameEngine:
             self.set_temple_latitude(color, temple_latitude)
             adventurers_latitudes.remove(adv_latitude)
             temples_latitudes.remove(temple_latitude)
-        for latitude, color in self.state.adventurers_start.items():
-            grid_pos = Coordinates.adventurer_latitude_to_grid_position(latitude)
-            self.state.player.board.add_adventurer(color, grid_pos)
         self.phase = Phase.SAMPLE_NEXT_TILE
 
     def choose_next_tile(self):
@@ -133,12 +130,13 @@ class GameEngine:
         return False
 
     def set_temple_latitude(self, color: Color, latitude: Latitude) -> None:
-        self.state.temples[latitude] = color
+        self.state.set_temple_latitude(color, latitude)
         # Add a sprite
         self.layers.temples.append(TempleSprite(color=color, latitude=latitude))
 
     def set_adventurer_latitude(self, color: Color, latitude: Latitude) -> None:
-        self.state.adventurers_start[latitude] = color
+        # Modify game state
+        self.state.set_adventurer_latitude(color, latitude)
         # Add a sprite
         pos = Coordinates.adventurer_latitude_to_grid_position(latitude)
         self.layers.adventurers.append(AdventurerSprite(color=color, grid_position=pos))
@@ -147,6 +145,8 @@ class GameEngine:
         self.layers.next_tile = None
 
     def add_tile(self, tile_id: TileID, grid_position: GridPosition):
+        if not self.valid_tile_move(grid_position):
+            return
         self.state.player.board.add_tile(tile_id, grid_position)
         self.phase = Phase.SAMPLE_NEXT_TILE
         self.layers.tiles.append(BoardTileSprite(tile_id, grid_position))
@@ -174,29 +174,28 @@ class GameEngine:
 
     def update_tile_effects(self):
         for tile_effect in self.layers.tiles_effects:
-            if self.reachable(tile_effect.grid_position):
+            if self.is_valid_adventurer_move(tile_effect.grid_position):
                 tile_effect.set_valid_move()
             else:
                 tile_effect.set_invalid_move()
 
-    def reachable(self, grid_position: GridPosition):
+    def is_valid_adventurer_move(self, grid_position: GridPosition):
         dropped_tile_id = self.layers.dropped_tile.tile_id
         num_moves = tiles[dropped_tile_id].num_ways()
-        adv_position = self.state.player.board.adventurers[self.selected_adventurer]
-        if grid_position in self.state.player.board.adventurers.values():
-            return False
-        return self.state.player.board.connected(adv_position, grid_position, num_moves)
+        return self.state.player.board.is_valid_adventurer_move(
+            self.selected_adventurer, grid_position, num_moves
+        )
 
     def set_adventurer_destination(self, grid_position):
         if self.selected_adventurer is None:
             return
-        if not self.reachable(grid_position):
+        if not self.is_valid_adventurer_move(grid_position):
             return
-        color = self.selected_adventurer
-        self.state.player.board.move_adventurer(color, grid_position)
+        self.state.player.board.move_adventurer(self.selected_adventurer, grid_position)
         for adv in self.layers.adventurers:
-            if adv.color == color:
+            if adv.color == self.selected_adventurer:
                 adv.move(grid_position)
+
         self.reset_selected_adventurer()
         self.phase = Phase.SAMPLE_NEXT_TILE
 

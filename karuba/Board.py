@@ -41,6 +41,8 @@ class Board:
         ]
         #: Current grid position of every adventurer (indexed by color)
         self.adventurers: Dict[Color, GridPosition] = {}
+        #: Grid position of every temple (indexed by color)
+        self.temples: Dict[Color, GridPosition] = {}
         #: Graph representing board
         self.graph: Graph = {i: set() for i in range(BOARD_HEIGHT * BOARD_WIDTH)}
 
@@ -60,14 +62,39 @@ class Board:
     def add_adventurer(self, color: Color, position: GridPosition):
         self.adventurers[color] = position
 
+    def add_temple(self, color: Color, position: GridPosition):
+        self.temples[color] = position
+
     def move_adventurer(self, color: Color, new_position: GridPosition):
-        path = self.get_path(self.adventurers[color], new_position)
-        assert path
         assert new_position != self.adventurers[color]
         self.adventurers[color] = new_position
 
-    def valid_adventurer_move(self, color: Color, n_cells: int) -> bool:
-        raise NotImplementedError()
+    def is_valid_adventurer_move(
+        self, color: Color, target: GridPosition, num_moves: int
+    ) -> bool:
+        start = self.adventurers[color]
+        path = self._get_path(start, target)
+
+        # No path
+        if path is None:
+            return False
+
+        num_moves_required = len(path) - 1
+        # Too far
+        if num_moves_required > num_moves:
+            return False
+
+        # Need to go on the same cell as another adventurer
+        for p in path:
+            for other_color, other_pos in self.adventurers.items():
+                if other_color != color and other_pos == p:
+                    return False
+
+        # Target is a temple from another color
+        for temple_color, pos in self.temples.items():
+            if pos == target and temple_color != color:
+                return False
+        return True
 
     def take_treasure(self, grid_position) -> int:
         index = grid_to_index(grid_position)
@@ -81,7 +108,7 @@ class Board:
             score += 2
         return score
 
-    def get_path(
+    def _get_path(
         self, start: GridPosition, end: GridPosition
     ) -> Optional[List[GridPosition]]:
         index_start = grid_to_index(start)
@@ -92,11 +119,11 @@ class Board:
             path = [index_to_grid(p) for p in path]
         return path
 
-    def connected(self, start: GridPosition, end: GridPosition, num_moves: int):
-        path = self.get_path(start, end)
+    def _connected(self, start: GridPosition, end: GridPosition, num_moves: int):
+        path = self._get_path(start, end)
         if path is None:
             return False
-        num_moves_required = len(self.get_path(start, end)) - 1
+        num_moves_required = len(self._get_path(start, end)) - 1
         return num_moves_required <= num_moves
 
     def _update_graph(self, tile_id: TileID, grid_position: GridPosition):
